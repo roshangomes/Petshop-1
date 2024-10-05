@@ -2,7 +2,7 @@ import uuid
 
 from django.db import models
 from django.utils.timesince import timesince
-
+from django.core.exceptions import ValidationError
 from account.models import User
 
 
@@ -113,9 +113,31 @@ class Event(models.Model):
 
     def created_at_formatted(self):
         return timesince(self.created_at)    
+    def registration_count(self):
+        return self.registrations.count()
     
-    
+def validate_file_extension(value):
+    if not value.name.endswith(('.pdf', '.jpg', '.jpeg', '.png')):
+        raise ValidationError("Only PDF and image files (JPG, PNG) are allowed.")
+
+
+class EventRegistration(models.Model):
+    full_name = models.CharField(max_length=100)
+    email = models.EmailField()
+    contact = models.CharField(max_length=15)
+    address = models.TextField()
+    selected_event = models.CharField(max_length=100)  # Event title
+    pet_type = models.CharField(max_length=50)
+    pet_name = models.CharField(max_length=50)
+    pet_dob = models.DateField()
+    vaccination_card = models.FileField(upload_to='vaccination_cards/')
+    agree_to_terms = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.full_name} - {self.selected_event}"
  
+
  
 class Bookmark(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -129,3 +151,4 @@ class Bookmark(models.Model):
 
     def created_at_formatted(self):
         return timesince(self.created_at)
+    

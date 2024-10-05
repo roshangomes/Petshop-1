@@ -10,8 +10,10 @@ from .serializers import NotificationSerializer
 def notifications(request):
     received_notifications = request.user.received_notifications.filter(is_read=False)
     serializer = NotificationSerializer(received_notifications, many=True)
+    
+    unread_count = received_notifications.count()  # Count unread notifications
 
-    return JsonResponse(serializer.data, safe=False)
+    return JsonResponse({'notifications': serializer.data, 'unread_count': unread_count}, safe=False)
 
 
 @api_view(['POST'])

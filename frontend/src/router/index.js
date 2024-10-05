@@ -17,8 +17,10 @@ import EventForm from "../views/EventForm.vue";
 import Bookmarked from "../views/Bookmarked.vue";
 import FeedForm from "../views/FeedForm.vue";
 import PostEdit from "../views/PostEdit.vue";
-
-
+import EventHome from "../views/EventHome.vue";
+import Hero from "../components/Hero.vue";
+import EventDetails from "../views/EventDetails.vue";
+import EventRegister from "../views/EventRegister.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -93,30 +95,47 @@ const router = createRouter({
       name: "postedit",
       component: PostEdit,
     },
- 
-  
+
     {
-      path: '/events',
-      name: 'EventList',
+      path: "/events",
+      name: "EventList",
       component: EventList,
     },
     {
-      path: '/events/create',
-      name: 'EventForm',
+      path: "/events/create",
+      name: "EventForm",
       component: EventForm,
     },
-  
+
     {
       path: "/about",
       name: "about",
       component: () => import("../views/AboutView.vue"),
     },
     {
-      path: '/bookmarks',
-      name: 'bookmarked-posts',
-      component: Bookmarked
+      path: "/bookmarks",
+      name: "bookmarked-posts",
+      component: Bookmarked,
+    },
+    {
+      path: "/",
+      component: Hero,
     },
 
+    {
+      path: "/pet-events",
+      component: EventHome,
+    },
+    {
+      path: "/event/:id", // Dynamic route for event details
+      name: "EventDetails",
+      component: EventDetails,
+    },
+    {
+      path: "/event/:id",
+      name: "eventregister",
+      component: EventRegister,
+    },
   ],
 });
 

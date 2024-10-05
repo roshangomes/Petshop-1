@@ -7,9 +7,9 @@ from account.models import User, FriendshipRequest
 from account.serializers import UserSerializer
 from notification.utils import create_notification
 from .forms import PostForm, AttachmentForm, EventForm,EventAttachmentForm
-from .models import Post, Like, Comment, Trend, Event,Bookmark
-from .serializers import PostSerializer, PostDetailSerializer, CommentSerializer, TrendSerializer, EventSerializer
-
+from .models import Post, Like, Comment, Trend, Event,Bookmark,EventRegistration
+from .serializers import PostSerializer, PostDetailSerializer, CommentSerializer, TrendSerializer, EventSerializer,EventRegistrationSerializer
+from rest_framework.permissions import IsAuthenticated
 
 @api_view(['GET'])
 def post_list(request):
@@ -139,12 +139,26 @@ def post_create_comment(request, pk):
     return JsonResponse(serializer.data, safe=False)
 
 
+# @api_view(['DELETE'])
+# def post_delete(request, pk):
+#     post = Post.objects.filter(created_by=request.user).get(pk=pk)
+#     post.delete()
+
+#     return JsonResponse({'message': 'post deleted'})
 @api_view(['DELETE'])
 def post_delete(request, pk):
-    post = Post.objects.filter(created_by=request.user).get(pk=pk)
-    post.delete()
+    try:
+        post = Post.objects.get(pk=pk, created_by=request.user)
+        post.delete()
 
-    return JsonResponse({'message': 'post deleted'})
+        # Decrement the user's post count
+        user = request.user
+        user.posts_count = max(user.posts_count - 1, 0)  # Ensure post count doesn't go below 0
+        user.save()
+
+        return JsonResponse({'message': 'post deleted'})
+    except Post.DoesNotExist:
+        return JsonResponse({'error': 'Post not found'}, status=status.HTTP_404_NOT_FOUND)
 
 
 @api_view(['POST'])
@@ -161,6 +175,61 @@ def get_trends(request):
     serializer = TrendSerializer(Trend.objects.all(), many=True)
 
     return JsonResponse(serializer.data, safe=False)
+
+    
+@api_view(['POST'])
+def bookmark_post(request, pk):
+    try:
+        post = Post.objects.get(pk=pk)
+    except Post.DoesNotExist:
+        return Response({'error': 'Post not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    user = request.user
+    if user.is_authenticated:
+        bookmark, created = Bookmark.objects.get_or_create(post=post, user=user)
+        if created:
+            return Response({'message': 'Post bookmarked'}, status=status.HTTP_201_CREATED)
+        else:
+            return Response({'message': 'Post already bookmarked'}, status=status.HTTP_200_OK)
+    else:
+        return Response({'error': 'User not authenticated'}, status=status.HTTP_401_UNAUTHORIZED)
+
+@api_view(['GET'])
+def bookmarked_posts(request):
+    bookmarks = Bookmark.objects.filter(user=request.user)
+    posts = [bookmark.post for bookmark in bookmarks]
+    serializer = PostSerializer(posts, many=True)
+    return JsonResponse(serializer.data, safe=False)
+
+@api_view(['PUT'])
+def post_edit(request, pk):
+    print(f"Request user: {request.user}")
+    try:
+        post = Post.objects.get(pk=pk)
+        if post.created_by != request.user:
+            return Response({'error': 'Not authorized to edit this post'}, status=status.HTTP_403_FORBIDDEN)
+    except Post.DoesNotExist:
+        return Response({'error': 'Post not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    form = PostForm(request.data, instance=post)
+    attachment_form = AttachmentForm(request.data, request.FILES)
+
+    if attachment_form.is_valid():
+        attachment = attachment_form.save(commit=False)
+        attachment.created_by = request.user
+        attachment.save()
+        post.attachments.add(attachment)
+
+    if form.is_valid():
+        post = form.save()  # This should be the correct way to save the updated post.
+        serializer = PostSerializer(post)
+        return Response(serializer.data)
+    else:
+        print(f"Form errors: {form.errors}")  # Debugging line
+        return Response(form.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+
+
 
 
 
@@ -195,6 +264,14 @@ def event_list_create(request):
             return JsonResponse(serializer.data, status=status.HTTP_201_CREATED)
         return JsonResponse(form.errors, status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['GET'])
+def event_detail(request, id):
+     try:
+        event = Event.objects.get(id=id)
+        serializer = EventSerializer(event, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+     except Event.DoesNotExist:
+       return Response({"detail": "Event not found."}, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['POST'])
 def event_register(request, event_id):
@@ -206,58 +283,22 @@ def event_register(request, event_id):
     return JsonResponse({'status': 'already registered'}, status=status.HTTP_400_BAD_REQUEST)
 
 
-
-
-
 @api_view(['POST'])
-def bookmark_post(request, pk):
+def event_register(request,id):
     try:
-        post = Post.objects.get(pk=pk)
-    except Post.DoesNotExist:
-        return Response({'error': 'Post not found'}, status=status.HTTP_404_NOT_FOUND)
+        event = Event.objects.get(id=id)  # Fetch the event based on ID
+    except Event.DoesNotExist:
+        return JsonResponse({'error': 'Event not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    user = request.user
-    if user.is_authenticated:
-        bookmark, created = Bookmark.objects.get_or_create(post=post, user=user)
-        if created:
-            return Response({'message': 'Post bookmarked'}, status=status.HTTP_201_CREATED)
-        else:
-            return Response({'message': 'Post already bookmarked'}, status=status.HTTP_200_OK)
-    else:
-        return Response({'error': 'User not authenticated'}, status=status.HTTP_401_UNAUTHORIZED)
+    # Check if the user is already registered
+    if request.user in event.registered_users.all():
+        return JsonResponse({'status': 'already registered'}, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['GET'])
-def bookmarked_posts(request):
-    bookmarks = Bookmark.objects.filter(user=request.user)
-    posts = [bookmark.post for bookmark in bookmarks]
-    serializer = PostSerializer(posts, many=True)
-    return JsonResponse(serializer.data, safe=False)
-
-
-@api_view(['PUT'])
-def post_edit(request, pk):
-    print(f"Request user: {request.user}")
-    try:
-        post = Post.objects.get(pk=pk)
-        if post.created_by != request.user:
-            return Response({'error': 'Not authorized to edit this post'}, status=status.HTTP_403_FORBIDDEN)
-    except Post.DoesNotExist:
-        return Response({'error': 'Post not found'}, status=status.HTTP_404_NOT_FOUND)
+    # Create the EventRegistration entry
+    serializer = EventRegistrationSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save(selected_event=event.title)  # Set the selected event title
+        event.registered_users.add(request.user)  # Add user to event's registered users
+        return JsonResponse({'status': 'registered'}, status=status.HTTP_201_CREATED)
     
-    form = PostForm(request.data, instance=post)
-    attachment_form = AttachmentForm(request.data, request.FILES)
-
-    if attachment_form.is_valid():
-        attachment = attachment_form.save(commit=False)
-        attachment.created_by = request.user
-        attachment.save()
-        post.attachments.add(attachment)
-
-    if form.is_valid():
-        post = form.save(commit=False)
-        post.save()
-
-        serializer = PostSerializer(post)
-        return Response(serializer.data)
-    else:
-        return Response(form.errors, status=status.HTTP_400_BAD_REQUEST)
+    return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

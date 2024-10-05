@@ -5,10 +5,10 @@
       <h2 class="text-3xl font-bold">Events</h2>
       <p class="text-xl mt-2">Find exciting and engaging new events for your pet</p>
       <p class="mt-4">
-        Expolre the Event section to know more 
+        Explore the Event section to know more 
       </p>
       <div class="mt-6">
-        <router-link to="/events">
+        <router-link to ="/pet-events">
           <button
             class="border-2 border-blue-900 text-blue-900 px-6 py-2 rounded mr-2"
           >

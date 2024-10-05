@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from account.serializers import UserSerializer
 
-from .models import Post, PostAttachment, Comment, Trend, Event,EventAttachment,Bookmark
+from .models import Post, PostAttachment, Comment, Trend, Event,EventAttachment,Bookmark,EventRegistration
 
 
 class PostAttachmentSerializer(serializers.ModelSerializer):
@@ -224,4 +224,38 @@ class EventSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         return Event.objects.create(**validated_data)
 
+class EventRegistrationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EventRegistration
+        fields = [
+            'id',                 # Include ID for the event registration
+            'full_name',
+            'email',
+            'contact',
+            'address',
+            'selected_event',
+            'pet_type',
+            'pet_name',
+            'pet_dob',
+            'vaccination_card',
+            'agree_to_terms',
+            'created_at',        # Optionally include created_at for tracking purposes
+        ]
+    
+    def validate_email(self, value):
+        """Check that the email is unique."""
+        if EventRegistration.objects.filter(email=value).exists():
+            raise serializers.ValidationError("This email address is already in use.")
+        return value
 
+    def validate_contact(self, value):
+        """Check that the contact number is in the correct format."""
+        if len(value) < 10 or len(value) > 15:
+            raise serializers.ValidationError("Contact number must be between 10 and 15 digits.")
+        return value
+
+    def validate(self, attrs):
+        """Custom validation logic."""
+        if not attrs.get('agree_to_terms'):
+            raise serializers.ValidationError("You must agree to the terms and conditions.")
+        return attrs

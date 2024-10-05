@@ -1,4 +1,5 @@
 from django.urls import path
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from . import api
 
@@ -16,5 +17,10 @@ urlpatterns = [
     path('events/', api.event_list_create, name='event_list_create'),
     path('events/register/<uuid:event_id>/', api.event_register, name='event_register'),
     path('<uuid:pk>/bookmark/', api.bookmark_post, name='post_bookmark'),  # New bookmark route
-    path('bookmarks/', api.bookmarked_posts, name='bookmarked_posts'),  # New route to view bookmarks
+    path('bookmarks/', api.bookmarked_posts, name='bookmarked_posts'), 
+    path('events/<str:id>/', api.event_detail, name='event_detail'),  # New route to view bookmarks
+    path('posts/register/<str:id>/', api.event_register, name='event_register'),
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    
 ]

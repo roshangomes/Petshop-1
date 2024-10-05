@@ -8,6 +8,7 @@
           <p class="text-blue-900 mt-6 max-w-xl">Having a pet means you have more joy, a new friend, a happy person who will always be with you to have fun. We have 200+ different pets that can meet your needs!</p>
           <div class="mt-6">
             <button class="bg-blue-900 text-white px-6 py-2 rounded mr-2">View Intro</button>
+            
             <button class="bg-blue-900 text-white px-6 py-2 rounded">Explore Now</button>
           </div>
         </div>
